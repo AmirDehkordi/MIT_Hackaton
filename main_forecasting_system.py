@@ -455,6 +455,66 @@ class ComprehensiveStockForecaster:
             print(f"Forecast visualization saved to {save_path}")
         
         plt.show()
+    def generate_multi_horizon_forecast(self) -> Dict:
+    """
+    Generate forecasts for multiple time horizons
+    """
+    horizons = {
+        'short_term': 5,    # 1 week
+        'mid_term': 22,     # 1 month  
+        'long_term': 66     # 3 months
+    }
+    
+    multi_forecasts = {}
+    
+    for horizon_name, days in horizons.items():
+        forecast = self.generate_comprehensive_forecast(forecast_days=days)
+        multi_forecasts[horizon_name] = forecast
+        
+    return multi_forecasts
+
+    def get_multi_horizon_recommendations(self) -> Dict:
+        """
+        Get investment recommendations for different time horizons
+        """
+        if not hasattr(self, 'multi_forecasts'):
+            self.multi_forecasts = self.generate_multi_horizon_forecast()
+        
+        recommendations = {}
+        current_price = self.raw_data['price_data']['Close'].iloc[-1]
+        
+        for horizon, forecast_data in self.multi_forecasts.items():
+            forecast_df = forecast_data['forecast_df']
+            
+            # Calculate metrics for each horizon
+            target_price = forecast_df['Predicted_Price'].iloc[-1]
+            expected_return = (target_price - current_price) / current_price
+            volatility = forecast_df['Predicted_Return'].std()
+            confidence = forecast_df['Confidence_Score'].mean()
+            
+            # Determine signal
+            if expected_return > 0.1:
+                signal = "STRONG BUY"
+            elif expected_return > 0.05:
+                signal = "BUY"
+            elif expected_return < -0.1:
+                signal = "STRONG SELL"
+            elif expected_return < -0.05:
+                signal = "SELL"
+            else:
+                signal = "HOLD"
+            
+            recommendations[horizon] = {
+                'days': len(forecast_df),
+                'target_price': target_price,
+                'expected_return': expected_return,
+                'volatility': volatility,
+                'confidence': confidence,
+                'signal': signal,
+                'forecast_df': forecast_df
+            }
+        
+        return recommendations
     
     def save_complete_analysis(self, directory: str = "analysis_results") -> None:
         """
