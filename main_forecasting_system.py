@@ -338,6 +338,67 @@ class ComprehensiveStockForecaster:
         print("Comprehensive forecast generated!")
         return forecast_results
     
+    def generate_multi_horizon_forecast(self) -> Dict:
+        """
+        Generate forecasts for multiple time horizons
+        """
+        horizons = {
+            'short_term': 5,    # 1 week
+            'mid_term': 22,     # 1 month  
+            'long_term': 66     # 3 months
+        }
+        
+        multi_forecasts = {}
+        
+        for horizon_name, days in horizons.items():
+            forecast = self.generate_comprehensive_forecast(forecast_days=days)
+            multi_forecasts[horizon_name] = forecast
+            
+        return multi_forecasts
+    
+    def get_multi_horizon_recommendations(self) -> Dict:
+        """
+        Get investment recommendations for different time horizons
+        """
+        if not hasattr(self, 'multi_forecasts'):
+            self.multi_forecasts = self.generate_multi_horizon_forecast()
+        
+        recommendations = {}
+        current_price = self.raw_data['price_data']['Close'].iloc[-1]
+        
+        for horizon, forecast_data in self.multi_forecasts.items():
+            forecast_df = forecast_data['forecast_df']
+            
+            # Calculate metrics for each horizon
+            target_price = forecast_df['Predicted_Price'].iloc[-1]
+            expected_return = (target_price - current_price) / current_price
+            volatility = forecast_df['Predicted_Return'].std()
+            confidence = forecast_df['Confidence_Score'].mean()
+            
+            # Determine signal
+            if expected_return > 0.1:
+                signal = "STRONG BUY"
+            elif expected_return > 0.05:
+                signal = "BUY"
+            elif expected_return < -0.1:
+                signal = "STRONG SELL"
+            elif expected_return < -0.05:
+                signal = "SELL"
+            else:
+                signal = "HOLD"
+            
+            recommendations[horizon] = {
+                'days': len(forecast_df),
+                'target_price': target_price,
+                'expected_return': expected_return,
+                'volatility': volatility,
+                'confidence': confidence,
+                'signal': signal,
+                'forecast_df': forecast_df
+            }
+        
+        return recommendations
+    
     def get_investment_recommendation(self) -> Dict:
         """
         Generate investment recommendation based on all analyses
@@ -385,210 +446,3 @@ class ComprehensiveStockForecaster:
         }
         
         return investment_rec
-    
-    def visualize_forecast(self, save_path: str = None) -> None:
-        """
-        Create comprehensive visualization of the forecast
-        """
-        if 'comprehensive' not in self.predictions:
-            raise ValueError("Comprehensive forecast not generated.")
-        
-        fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-        
-        # Historical vs Predicted Prices
-        ax1 = axes[0, 0]
-        historical_data = self.raw_data['price_data']['Close'].tail(60)
-        forecast_data = self.predictions['comprehensive']['forecast_df']
-        
-        ax1.plot(historical_data.index, historical_data.values, label='Historical', color='blue', linewidth=2)
-        ax1.plot(forecast_data.index, forecast_data['Predicted_Price'], label='Forecast', color='red', linewidth=2)
-        ax1.fill_between(forecast_data.index, forecast_data['Lower_Bound'], 
-                        forecast_data['Upper_Bound'], alpha=0.3, color='red', label='Confidence Band')
-        ax1.set_title(f'{self.ticker} Price Forecast')
-        ax1.set_ylabel('Price ($)')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-        
-        # Returns Forecast
-        ax2 = axes[0, 1]
-        ax2.plot(forecast_data.index, forecast_data['Predicted_Return'] * 100, 
-                color='green', linewidth=2, marker='o')
-        ax2.set_title('Predicted Daily Returns')
-        ax2.set_ylabel('Returns (%)')
-        ax2.grid(True, alpha=0.3)
-        ax2.axhline(y=0, color='black', linestyle='--', alpha=0.5)
-        
-        # Model Performance
-        ax3 = axes[1, 0]
-        if not self.model_performance.empty:
-            models = self.model_performance['Model']
-            r2_scores = self.model_performance['Test_R2']
-            
-            bars = ax3.bar(models, r2_scores, color=['skyblue', 'lightgreen', 'salmon'])
-            ax3.set_title('Model Performance (R² Score)')
-            ax3.set_ylabel('R² Score')
-            ax3.set_ylim(0, 1)
-            
-            # Add value labels on bars
-            for bar, r2 in zip(bars, r2_scores):
-                height = bar.get_height()
-                ax3.text(bar.get_x() + bar.get_width()/2., height + 0.01,
-                        f'{r2:.3f}', ha='center', va='bottom')
-        
-        # Feature Importance (if available)
-        ax4 = axes[1, 1]
-        if 'ml' in self.predictions and self.predictions['ml']['feature_importance']:
-            # Use Random Forest feature importance
-            if 'random_forest' in self.predictions['ml']['feature_importance']:
-                importance = self.predictions['ml']['feature_importance']['random_forest'].head(10)
-                
-                ax4.barh(range(len(importance)), importance.values, color='lightcoral')
-                ax4.set_yticks(range(len(importance)))
-                ax4.set_yticklabels(importance.index, fontsize=8)
-                ax4.set_title('Top 10 Feature Importance')
-                ax4.set_xlabel('Importance Score')
-        
-        plt.tight_layout()
-        
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            print(f"Forecast visualization saved to {save_path}")
-        
-        plt.show()
-    def generate_multi_horizon_forecast(self) -> Dict:
-    """
-    Generate forecasts for multiple time horizons
-    """
-    horizons = {
-        'short_term': 5,    # 1 week
-        'mid_term': 22,     # 1 month  
-        'long_term': 66     # 3 months
-    }
-    
-    multi_forecasts = {}
-    
-    for horizon_name, days in horizons.items():
-        forecast = self.generate_comprehensive_forecast(forecast_days=days)
-        multi_forecasts[horizon_name] = forecast
-        
-    return multi_forecasts
-
-    def get_multi_horizon_recommendations(self) -> Dict:
-        """
-        Get investment recommendations for different time horizons
-        """
-        if not hasattr(self, 'multi_forecasts'):
-            self.multi_forecasts = self.generate_multi_horizon_forecast()
-        
-        recommendations = {}
-        current_price = self.raw_data['price_data']['Close'].iloc[-1]
-        
-        for horizon, forecast_data in self.multi_forecasts.items():
-            forecast_df = forecast_data['forecast_df']
-            
-            # Calculate metrics for each horizon
-            target_price = forecast_df['Predicted_Price'].iloc[-1]
-            expected_return = (target_price - current_price) / current_price
-            volatility = forecast_df['Predicted_Return'].std()
-            confidence = forecast_df['Confidence_Score'].mean()
-            
-            # Determine signal
-            if expected_return > 0.1:
-                signal = "STRONG BUY"
-            elif expected_return > 0.05:
-                signal = "BUY"
-            elif expected_return < -0.1:
-                signal = "STRONG SELL"
-            elif expected_return < -0.05:
-                signal = "SELL"
-            else:
-                signal = "HOLD"
-            
-            recommendations[horizon] = {
-                'days': len(forecast_df),
-                'target_price': target_price,
-                'expected_return': expected_return,
-                'volatility': volatility,
-                'confidence': confidence,
-                'signal': signal,
-                'forecast_df': forecast_df
-            }
-        
-        return recommendations
-    
-    def save_complete_analysis(self, directory: str = "analysis_results") -> None:
-        """
-        Save all analysis results and models
-        """
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        
-        # Save predictions and analysis
-        with open(f"{directory}/complete_analysis_{self.ticker}.pkl", 'wb') as f:
-            pickle.dump({
-                'raw_data': self.raw_data,
-                'processed_factors': self.processed_factors,
-                'predictions': self.predictions,
-                'model_performance': self.model_performance
-            }, f)
-        
-        # Save investment recommendation
-        if 'comprehensive' in self.predictions:
-            recommendation = self.get_investment_recommendation()
-            recommendation_df = pd.DataFrame([recommendation])
-            recommendation_df.to_csv(f"{directory}/investment_recommendation_{self.ticker}.csv", index=False)
-        
-        # Save forecast data
-        if 'comprehensive' in self.predictions:
-            forecast_df = self.predictions['comprehensive']['forecast_df']
-            forecast_df.to_csv(f"{directory}/price_forecast_{self.ticker}.csv")
-        
-        print(f"Complete analysis saved to {directory}/")
-
-# Example usage and testing
-if __name__ == "__main__":
-    # Example: Analyze Apple stock
-    ticker = "AAPL"
-    
-    print(f"Starting comprehensive analysis for {ticker}...")
-    
-    forecaster = ComprehensiveStockForecaster(ticker)
-    
-    # Step 1: Collect data
-    data = forecaster.collect_all_data()
-    
-    # Step 2: Extract factors
-    factors = forecaster.extract_all_factors()
-    
-    # Step 3: Build VAR model
-    var_results = forecaster.build_var_model()
-    
-    # Step 4: Train ML models
-    ml_results = forecaster.train_ml_models()
-    
-    # Step 5: Generate comprehensive forecast
-    forecast = forecaster.generate_comprehensive_forecast()
-    
-    # Step 6: Get investment recommendation
-    recommendation = forecaster.get_investment_recommendation()
-    
-    print("\n" + "="*50)
-    print("INVESTMENT RECOMMENDATION")
-    print("="*50)
-    print(f"Ticker: {recommendation['ticker']}")
-    print(f"Current Price: ${recommendation['current_price']:.2f}")
-    print(f"1-Week Target: ${recommendation['target_price_1w']:.2f}")
-    print(f"1-Month Target: ${recommendation['target_price_1m']:.2f}")
-    print(f"Expected 1-Month Return: {recommendation['expected_return_1m']:.2%}")
-    print(f"Risk-Adjusted Return: {recommendation['risk_adjusted_return']:.3f}")
-    print(f"Confidence Score: {recommendation['confidence_score']:.3f}")
-    print(f"Recommendation: {recommendation['recommendation']}")
-    print("="*50)
-    
-    # Step 7: Visualize results
-    forecaster.visualize_forecast(save_path=f"forecast_{ticker}.png")
-    
-    # Step 8: Save complete analysis
-    forecaster.save_complete_analysis()
-    
-    print("\nAnalysis completed successfully!") 
