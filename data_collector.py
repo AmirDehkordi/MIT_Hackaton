@@ -68,9 +68,9 @@ class DataCollector:
 
 
     def generate_multi_horizon_forecast(self) -> Dict:
-    """
-    Generate forecasts for multiple time horizons
-    """
+        """
+        Generate forecasts for multiple time horizons
+        """
         horizons = {
             'short_term': 5,    # 1 week
             'mid_term': 22,     # 1 month  
