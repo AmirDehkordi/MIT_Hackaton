@@ -8,7 +8,7 @@ import ta
 
 # Import your custom modules
 from main_forecasting_system import ComprehensiveStockForecaster
-from ticker_utils import get_all_tickers # Import the new utility
+from ticker_utils import get_all_tickers # CORRECTED IMPORT
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -77,18 +77,18 @@ st.title('AI-Powered Stock Forecaster 📈')
 
 # --- NEW SEARCH BOX ---
 # Load the ticker data
-ticker_data = get_sp500_tickers()
+ticker_data = get_all_tickers() # CORRECTED FUNCTION CALL
 display_options = list(ticker_data.keys())
 
 # Use a selectbox for a searchable dropdown
 selected_display = st.selectbox(
-    "Search for a stock from the S&P 500",
+    "Search for a stock from the NASDAQ",
     options=display_options,
-    index=display_options.index("AAPL - Apple Inc.") # Default to Apple
+    index=display_options.index("AAPL - Apple Inc.") if "AAPL - Apple Inc." in display_options else 0
 )
 
 # Extract the ticker symbol from the selected option
-ticker_symbol = ticker_data[selected_display]
+ticker_symbol = ticker_data.get(selected_display)
 
 # --- Analysis and Display Area ---
 if ticker_symbol:
@@ -113,4 +113,5 @@ if ticker_symbol:
         price_data = forecaster.raw_data['price_data']
         fig = create_trading_view_chart(price_data, ticker_symbol)
         st.plotly_chart(fig, use_container_width=True)
+
 
