@@ -187,7 +187,7 @@ def generate_trading_signals(stock_data, analysis_results):
                                    'High', 'Normal')
     
     # Technical factor signals (if available)
-    if analysis_results.get('technical'):
+    if analysis_results.get('technical') and isinstance(analysis_results['technical']['factors'], pd.DataFrame):
         tech_factors = analysis_results['technical']['factors']
         if not tech_factors.empty:
             # Use first technical factor as trend signal
@@ -195,7 +195,7 @@ def generate_trading_signals(stock_data, analysis_results):
             signals['Tech_Signal'] = np.where(tech_signal > tech_signal.rolling(20).mean(), 1, -1)
     
     # Sentiment signals (if available)
-    if analysis_results.get('sentiment'):
+    if analysis_results.get('sentiment') and isinstance(analysis_results['sentiment']['factors'], pd.DataFrame):
         sentiment_factors = analysis_results['sentiment']['factors']
         if not sentiment_factors.empty:
             # Use sentiment as contrarian indicator

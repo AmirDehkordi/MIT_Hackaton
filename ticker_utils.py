@@ -3,9 +3,9 @@ import streamlit as st
 import requests
 
 @st.cache_data(ttl=3600)
-def get_all_tickers():
+def get_all_tickers(search_query=None):
     """
-    Get NASDAQ tickers with robust fallback
+    Get NASDAQ tickers with robust fallback and improved search
     """
     try:
         # Try to get from NASDAQ API
@@ -22,6 +22,23 @@ def get_all_tickers():
             nasdaq_df = pd.DataFrame(rows)
             nasdaq_df = nasdaq_df[['symbol', 'name']].dropna()
             nasdaq_df['display'] = nasdaq_df['symbol'] + ' - ' + nasdaq_df['name'].str[:50]
+            
+            if search_query:
+                # Case-insensitive search in both symbol and name
+                search_query = search_query.lower()
+                mask = (nasdaq_df['symbol'].str.lower().str.contains(search_query)) | \
+                      (nasdaq_df['name'].str.lower().str.contains(search_query))
+                nasdaq_df = nasdaq_df[mask]
+                
+                # Sort by relevance: exact symbol matches first, then symbol starts-with,
+                # then name matches
+                exact_symbol_match = nasdaq_df['symbol'].str.lower() == search_query
+                symbol_startswith = nasdaq_df['symbol'].str.lower().str.startswith(search_query)
+                
+                nasdaq_df['sort_key'] = (exact_symbol_match.astype(int) * 3 + 
+                                       symbol_startswith.astype(int) * 2)
+                nasdaq_df = nasdaq_df.sort_values('sort_key', ascending=False)
+                
             return pd.Series(nasdaq_df.symbol.values, index=nasdaq_df.display).to_dict()
     
     except Exception as e:

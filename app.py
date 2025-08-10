@@ -181,10 +181,24 @@ st.markdown("### Chincarini VAR + ML Ensemble Forecasting System")
 col1, col2 = st.columns([3, 1])
 
 with col1:
-    # Get ticker list with fallback
+    # Get ticker list with search functionality
+    search_query = st.text_input("🔍 Search for a stock (e.g., 'GOOG' or 'Apple')", "")
     try:
-        ticker_data = get_all_tickers()
+        ticker_data = get_all_tickers(search_query)
         display_options = list(ticker_data.keys())
+        if not display_options and search_query:
+            st.info("No matches found. Try a different search term.")
+            # Show some popular stocks as suggestions
+            ticker_data = {
+                "AAPL - Apple Inc.": "AAPL",
+                "MSFT - Microsoft Corporation": "MSFT",
+                "GOOGL - Alphabet Inc.": "GOOGL",
+                "AMZN - Amazon.com Inc.": "AMZN",
+                "NVDA - NVIDIA Corporation": "NVDA",
+                "TSLA - Tesla Inc.": "TSLA",
+                "META - Meta Platforms Inc.": "META"
+            }
+            display_options = list(ticker_data.keys())
     except Exception as e:
         st.warning(f"Could not fetch full ticker list: {e}")
         # Fallback options
