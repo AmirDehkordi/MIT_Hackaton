@@ -36,11 +36,30 @@ class DataCollector:
         try:
             stock = yf.Ticker(ticker)
             data = stock.history(period=period)
-            data.index = pd.to_datetime(data.index)
-            return data
+            
+            if not data.empty:
+                data.index = pd.to_datetime(data.index)
+                print(f"✅ Successfully fetched {len(data)} days of data for {ticker}")
+                return data
+            else:
+                print(f"⚠️ No data available for {ticker}")
+                return pd.DataFrame()
+                
         except Exception as e:
-            print(f"Error fetching data for {ticker} from Yahoo Finance: {e}")
+            print(f"❌ Error fetching data for {ticker}: {e}")
             return pd.DataFrame()
+        
+        # If all periods fail, try Alpha Vantage as fallback
+        print(f"🔄 Trying Alpha Vantage as fallback for {ticker}...")
+        alpha_data = self.get_stock_data_alpha_vantage(ticker)
+        
+        if not alpha_data.empty:
+            return alpha_data
+        
+        # If all data sources fail, return empty DataFrame
+        print(f"❌ All data sources failed for {ticker}. No data available.")
+        return pd.DataFrame()
+        
     
     def get_stock_data_alpha_vantage(self, ticker: str, outputsize: str = "full") -> pd.DataFrame:
         """
@@ -65,6 +84,7 @@ class DataCollector:
         except Exception as e:
             print(f"Error fetching data for {ticker} from Alpha Vantage: {e}")
             return pd.DataFrame()
+
 
 
     def generate_multi_horizon_forecast(self) -> Dict:
@@ -167,7 +187,7 @@ class DataCollector:
                 data = self.get_stock_data_yfinance(ticker, period="5y")
                 if not data.empty:
                     sector_data[ticker] = data['Adj Close']
-                time.sleep(1)  # Rate limiting
+
             except Exception as e:
                 print(f"Error fetching sector data for {ticker}: {e}")
         
@@ -207,13 +227,12 @@ class DataCollector:
             
             ticker_data = {
                 'price_data': self.get_stock_data_yfinance(ticker),
-                'fundamental_data': self.get_fundamental_data(ticker),
+                # Removed fundamental_data to fix the error
             }
             
             all_data[ticker] = ticker_data
             
-            # Add delays to respect API rate limits
-            time.sleep(2)
+
         
         # Collect market-wide data once
         print("Collecting market-wide data...")

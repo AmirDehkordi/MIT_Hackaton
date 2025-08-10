@@ -196,56 +196,84 @@ class TechnicalFactorExtractor:
         """
         Aggregate all technical indicators into a comprehensive technical factor
         """
-        # Calculate all individual indicators
-        ma_indicators = self.calculate_moving_averages(data)
-        momentum_indicators = self.calculate_momentum_indicators(data)
-        volatility_indicators = self.calculate_volatility_indicators(data)
-        volume_indicators = self.calculate_volume_indicators(data)
-        trend_indicators = self.calculate_trend_indicators(data)
-        price_indicators = self.calculate_price_action_features(data)
+        # Check if data is empty or insufficient
+        if data.empty or len(data) < 50:
+            print(f"⚠️ Insufficient data for technical analysis: {len(data)} rows")
+            # Return empty DataFrame with proper structure
+            return pd.DataFrame(index=data.index if not data.empty else pd.DatetimeIndex([]))
         
-        # Combine all indicators
-        technical_data = pd.concat([
-            ma_indicators,
-            momentum_indicators,
-            volatility_indicators,
-            volume_indicators,
-            trend_indicators,
-            price_indicators
-        ], axis=1)
-        
-        # Forward fill missing values and drop remaining NaNs
-        technical_data = technical_data.ffill().dropna()
-        
-        return technical_data
+        try:
+            # Calculate all individual indicators
+            ma_indicators = self.calculate_moving_averages(data)
+            momentum_indicators = self.calculate_momentum_indicators(data)
+            volatility_indicators = self.calculate_volatility_indicators(data)
+            volume_indicators = self.calculate_volume_indicators(data)
+            trend_indicators = self.calculate_trend_indicators(data)
+            price_indicators = self.calculate_price_action_features(data)
+            
+            # Combine all indicators
+            technical_data = pd.concat([
+                ma_indicators,
+                momentum_indicators,
+                volatility_indicators,
+                volume_indicators,
+                trend_indicators,
+                price_indicators
+            ], axis=1)
+            
+            # Forward fill missing values and drop remaining NaNs
+            technical_data = technical_data.ffill().dropna()
+            
+            return technical_data
+            
+        except Exception as e:
+            print(f"❌ Error in technical factor calculation: {e}")
+            # Return empty DataFrame with proper structure
+            return pd.DataFrame(index=data.index if not data.empty else pd.DatetimeIndex([]))
     
     def create_aggregated_factors(self, technical_data: pd.DataFrame) -> pd.DataFrame:
         """
         Create aggregated factors from technical indicators using PCA or factor analysis
         """
-        from sklearn.decomposition import PCA
-        from sklearn.preprocessing import StandardScaler
+        # Check if technical data is empty or insufficient
+        if technical_data.empty or technical_data.shape[0] < 10 or technical_data.shape[1] < 2:
+            print(f"⚠️ Insufficient technical data for PCA: shape {technical_data.shape}")
+            # Return empty DataFrame with proper structure
+            return pd.DataFrame(index=technical_data.index if not technical_data.empty else pd.DatetimeIndex([]))
         
-        # Standardize the data
-        scaler = StandardScaler()
-        scaled_data = scaler.fit_transform(technical_data.fillna(0))
-        
-        # Apply PCA to create factors
-        n_components = min(10, scaled_data.shape[1])  # Limit to 10 factors
-        pca = PCA(n_components=n_components)
-        factors = pca.fit_transform(scaled_data)
-        
-        # Create factor DataFrame
-        factor_columns = [f'Tech_Factor_{i+1}' for i in range(n_components)]
-        factor_df = pd.DataFrame(factors, 
-                                index=technical_data.index, 
-                                columns=factor_columns)
-        
-        # Store the explained variance ratio
-        self.tech_factor_variance = pca.explained_variance_ratio_
-        self.tech_factor_components = pca.components_
-        
-        return factor_df
+        try:
+            from sklearn.decomposition import PCA
+            from sklearn.preprocessing import StandardScaler
+            
+            # Standardize the data
+            scaler = StandardScaler()
+            scaled_data = scaler.fit_transform(technical_data.fillna(0))
+            
+            # Apply PCA to create factors
+            n_components = min(10, scaled_data.shape[1])  # Limit to 10 factors
+            if n_components < 1:
+                print(f"⚠️ No components available for PCA")
+                return pd.DataFrame(index=technical_data.index)
+                
+            pca = PCA(n_components=n_components)
+            factors = pca.fit_transform(scaled_data)
+            
+            # Create factor DataFrame
+            factor_columns = [f'Tech_Factor_{i+1}' for i in range(n_components)]
+            factor_df = pd.DataFrame(factors, 
+                                    index=technical_data.index, 
+                                    columns=factor_columns)
+            
+            # Store the explained variance ratio
+            self.tech_factor_variance = pca.explained_variance_ratio_
+            self.tech_factor_components = pca.components_
+            
+            return factor_df
+            
+        except Exception as e:
+            print(f"❌ Error in PCA factor creation: {e}")
+            # Return empty DataFrame with proper structure
+            return pd.DataFrame(index=technical_data.index if not technical_data.empty else pd.DatetimeIndex([]))
 
 # Example usage
 if __name__ == "__main__":

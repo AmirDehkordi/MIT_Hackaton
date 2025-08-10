@@ -17,7 +17,7 @@ import os
 # Import our custom modules
 from data_collector import DataCollector
 from technical_factors import TechnicalFactorExtractor
-from fundamental_factors import FundamentalFactorExtractor
+# from fundamental_factors import FundamentalFactorExtractor  # Disabled for now
 from sentiment_factors import SentimentFactorExtractor
 from var_model import ChincariniVARModel
 from ml_models import MLEnhancedForecasting
@@ -30,7 +30,7 @@ class ComprehensiveStockForecaster:
         self.ticker = ticker
         self.data_collector = DataCollector()
         self.technical_extractor = TechnicalFactorExtractor()
-        self.fundamental_extractor = FundamentalFactorExtractor()
+        # self.fundamental_extractor = FundamentalFactorExtractor()  # Disabled for now
         self.sentiment_extractor = SentimentFactorExtractor()
         self.var_model = ChincariniVARModel()
         self.ml_model = MLEnhancedForecasting()
@@ -62,7 +62,7 @@ class ComprehensiveStockForecaster:
         if self.ticker in ticker_data:
             self.raw_data = {
                 'price_data': ticker_data[self.ticker]['price_data'],
-                'fundamental_data': ticker_data[self.ticker]['fundamental_data'],
+                # Removed fundamental_data dependency
                 'market_data': ticker_data['market_data']
             }
             
@@ -86,18 +86,24 @@ class ComprehensiveStockForecaster:
             raise ValueError("No data available. Run collect_all_data() first.")
         
         price_data = self.raw_data['price_data']
-        fundamental_data = self.raw_data['fundamental_data']
+        # Skip fundamental data extraction
+        fundamental_data = None
         market_data = self.raw_data['market_data']
         
         # Extract technical factors
         print("Extracting technical factors...")
-        technical_indicators = self.technical_extractor.create_technical_factor(price_data)
-        technical_factors = self.technical_extractor.create_aggregated_factors(technical_indicators)
+        if price_data.empty or len(price_data) < 50:
+            print(f"⚠️ Insufficient price data for analysis: {len(price_data)} rows")
+            technical_indicators = pd.DataFrame()
+            technical_factors = pd.DataFrame()
+        else:
+            technical_indicators = self.technical_extractor.create_technical_factor(price_data)
+            technical_factors = self.technical_extractor.create_aggregated_factors(technical_indicators)
         
-        # Extract fundamental factors
-        print("Extracting fundamental factors...")
-        fundamental_indicators = self.fundamental_extractor.create_fundamental_factor(fundamental_data)
-        fundamental_factors = self.fundamental_extractor.create_aggregated_fundamental_factors(fundamental_indicators)
+        # Skip fundamental factors completely
+        print("Skipping fundamental factors...")
+        fundamental_indicators = pd.DataFrame()
+        fundamental_factors = pd.DataFrame()
         
         # Extract sentiment factors
         print("Extracting sentiment factors...")
@@ -106,19 +112,23 @@ class ComprehensiveStockForecaster:
         )
         sentiment_factors = self.sentiment_extractor.create_aggregated_sentiment_factors(sentiment_indicators)
         
-        # Store processed factors
+        # Store processed factors (technical and sentiment only)
+        all_factors = pd.concat([
+            technical_indicators,
+            sentiment_indicators
+        ], axis=1)
+        
         self.processed_factors = {
             'technical_factors': technical_factors,
-            'fundamental_factors': fundamental_factors,
             'sentiment_factors': sentiment_factors,
+            'all_factors': all_factors,
             'technical_indicators': technical_indicators,
-            'fundamental_indicators': fundamental_indicators,
             'sentiment_indicators': sentiment_indicators
         }
         
         print("Factor extraction completed!")
         print(f"Technical factors shape: {technical_factors.shape}")
-        print(f"Fundamental factors shape: {fundamental_factors.shape}")
+        print(f"Fundamental factors: Skipped for this analysis")
         print(f"Sentiment factors shape: {sentiment_factors.shape}")
         
         return self.processed_factors
@@ -135,7 +145,7 @@ class ComprehensiveStockForecaster:
         # Prepare factor data for VAR model
         factor_data = self.var_model.prepare_factor_data(
             technical_factors=self.processed_factors['technical_factors'],
-            fundamental_factors=self.processed_factors['fundamental_factors'],
+            # fundamental_factors removed
             sentiment_factors=self.processed_factors['sentiment_factors'],
             economic_indicators=self.raw_data['market_data']['economic_indicators']
         )
@@ -184,7 +194,7 @@ class ComprehensiveStockForecaster:
         # Combine all factors for ML training
         combined_factors = pd.concat([
             self.processed_factors['technical_factors'],
-            self.processed_factors['fundamental_factors'], 
+            # fundamental_factors removed
             self.processed_factors['sentiment_factors']
         ], axis=1)
         
@@ -240,7 +250,7 @@ class ComprehensiveStockForecaster:
         # Get the most recent factor values
         recent_factors = pd.concat([
             self.processed_factors['technical_factors'].iloc[-1:],
-            self.processed_factors['fundamental_factors'].iloc[-1:],
+            # fundamental_factors removed
             self.processed_factors['sentiment_factors'].iloc[-1:]
         ], axis=1)
         

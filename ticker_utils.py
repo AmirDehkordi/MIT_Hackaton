@@ -5,65 +5,123 @@ import requests
 @st.cache_data(ttl=3600)
 def get_all_tickers(search_query=None):
     """
-    Get NASDAQ tickers with robust fallback and improved search
+    Get comprehensive stock tickers with robust fallback
     """
-    try:
-        # Try to get from NASDAQ API
-        url = 'https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=2500&exchange=nasdaq&download=true'
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        
-        data = response.json()
-        rows = data.get('data', {}).get('rows', [])
-        
-        if rows:
-            nasdaq_df = pd.DataFrame(rows)
-            nasdaq_df = nasdaq_df[['symbol', 'name']].dropna()
-            nasdaq_df['display'] = nasdaq_df['symbol'] + ' - ' + nasdaq_df['name'].str[:50]
-            
-            if search_query:
-                # Case-insensitive search in both symbol and name
-                search_query = search_query.lower()
-                mask = (nasdaq_df['symbol'].str.lower().str.contains(search_query)) | \
-                      (nasdaq_df['name'].str.lower().str.contains(search_query))
-                nasdaq_df = nasdaq_df[mask]
-                
-                # Sort by relevance: exact symbol matches first, then symbol starts-with,
-                # then name matches
-                exact_symbol_match = nasdaq_df['symbol'].str.lower() == search_query
-                symbol_startswith = nasdaq_df['symbol'].str.lower().str.startswith(search_query)
-                
-                nasdaq_df['sort_key'] = (exact_symbol_match.astype(int) * 3 + 
-                                       symbol_startswith.astype(int) * 2)
-                nasdaq_df = nasdaq_df.sort_values('sort_key', ascending=False)
-                
-            return pd.Series(nasdaq_df.symbol.values, index=nasdaq_df.display).to_dict()
-    
-    except Exception as e:
-        st.warning(f"Using fallback ticker list: {e}")
-    
-    # Comprehensive fallback list
-    return {
+    # Comprehensive stock list - always return this for reliability
+    comprehensive_tickers = {
         "AAPL - Apple Inc.": "AAPL",
         "MSFT - Microsoft Corporation": "MSFT",
         "GOOGL - Alphabet Inc.": "GOOGL",
+        "GOOG - Alphabet Inc. Class C": "GOOG",
         "AMZN - Amazon.com Inc.": "AMZN",
         "NVDA - NVIDIA Corporation": "NVDA",
         "TSLA - Tesla Inc.": "TSLA",
         "META - Meta Platforms Inc.": "META",
+        "NFLX - Netflix Inc.": "NFLX",
         "BRK.B - Berkshire Hathaway": "BRK-B",
         "JNJ - Johnson & Johnson": "JNJ",
         "V - Visa Inc.": "V",
-        "JPM - JPMorgan Chase": "JPM",
+        "JPM - JPMorgan Chase & Co.": "JPM",
         "WMT - Walmart Inc.": "WMT",
-        "PG - Procter & Gamble": "PG",
-        "MA - Mastercard": "MA",
+        "PG - Procter & Gamble Co.": "PG",
+        "MA - Mastercard Inc.": "MA",
         "AVGO - Broadcom Inc.": "AVGO",
-        "HD - Home Depot": "HD",
-        "DIS - Walt Disney": "DIS",
+        "HD - Home Depot Inc.": "HD",
+        "DIS - Walt Disney Co.": "DIS",
         "ADBE - Adobe Inc.": "ADBE",
-        "NFLX - Netflix Inc.": "NFLX",
-        "CRM - Salesforce": "CRM"
+        "CRM - Salesforce Inc.": "CRM",
+        "PYPL - PayPal Holdings Inc.": "PYPL",
+        "INTC - Intel Corporation": "INTC",
+        "AMD - Advanced Micro Devices": "AMD",
+        "ORCL - Oracle Corporation": "ORCL",
+        "IBM - International Business Machines": "IBM",
+        "CSCO - Cisco Systems Inc.": "CSCO",
+        "QCOM - QUALCOMM Inc.": "QCOM",
+        "TXN - Texas Instruments Inc.": "TXN",
+        "COST - Costco Wholesale Corp.": "COST",
+        "ABBV - AbbVie Inc.": "ABBV",
+        "PEP - PepsiCo Inc.": "PEP",
+        "KO - Coca-Cola Co.": "KO",
+        "TMO - Thermo Fisher Scientific": "TMO",
+        "MRK - Merck & Co. Inc.": "MRK",
+        "CVX - Chevron Corporation": "CVX",
+        "LLY - Eli Lilly and Co.": "LLY",
+        "ACN - Accenture plc": "ACN",
+        "AVGO - Broadcom Inc.": "AVGO",
+        "NOW - ServiceNow Inc.": "NOW",
+        "CRM - Salesforce Inc.": "CRM",
+        "INTU - Intuit Inc.": "INTU",
+        "ISRG - Intuitive Surgical": "ISRG",
+        "BKNG - Booking Holdings Inc.": "BKNG",
+        "GILD - Gilead Sciences Inc.": "GILD",
+        "MDLZ - Mondelez International": "MDLZ",
+        "ADP - Automatic Data Processing": "ADP",
+        "CME - CME Group Inc.": "CME",
+        "LRCX - Lam Research Corp.": "LRCX",
+        "AMAT - Applied Materials Inc.": "AMAT",
+        "SBUX - Starbucks Corporation": "SBUX",
+        "REGN - Regeneron Pharmaceuticals": "REGN",
+        "KLAC - KLA Corporation": "KLAC",
+        "MELI - MercadoLibre Inc.": "MELI",
+        "SNPS - Synopsys Inc.": "SNPS",
+        "CDNS - Cadence Design Systems": "CDNS",
+        "MRVL - Marvell Technology Inc.": "MRVL",
+        "ORLY - O'Reilly Automotive Inc.": "ORLY",
+        "FTNT - Fortinet Inc.": "FTNT",
+        "ADSK - Autodesk Inc.": "ADSK",
+        "CHTR - Charter Communications": "CHTR",
+        "NXPI - NXP Semiconductors": "NXPI",
+        "PCAR - PACCAR Inc.": "PCAR",
+        "MNST - Monster Beverage Corp.": "MNST",
+        "PAYX - Paychex Inc.": "PAYX",
+        "FAST - Fastenal Co.": "FAST",
+        "ODFL - Old Dominion Freight Line": "ODFL",
+        "ROST - Ross Stores Inc.": "ROST",
+        "BZ - KANZHUN LIMITED": "BZ",
+        "CTSH - Cognizant Technology Solutions": "CTSH",
+        "DDOG - Datadog Inc.": "DDOG",
+        "TEAM - Atlassian Corporation": "TEAM",
+        "IDXX - IDEXX Laboratories Inc.": "IDXX",
+        "FANG - Diamondback Energy Inc.": "FANG",
+        "CSGP - CoStar Group Inc.": "CSGP",
+        "ANSS - ANSYS Inc.": "ANSS",
+        "ON - ON Semiconductor Corp.": "ON",
+        "DXCM - DexCom Inc.": "DXCM",
+        "BIIB - Biogen Inc.": "BIIB",
+        "GFS - GLOBALFOUNDRIES Inc.": "GFS",
+        "ILMN - Illumina Inc.": "ILMN",
+        "WBD - Warner Bros. Discovery": "WBD",
+        "GEHC - GE HealthCare Technologies": "GEHC",
+        "EXC - Exelon Corporation": "EXC",
+        "KDP - Keurig Dr Pepper Inc.": "KDP",
+        "LULU - Lululemon Athletica Inc.": "LULU",
+        "VRSK - Verisk Analytics Inc.": "VRSK",
+        "CCEP - Coca-Cola Europacific Partners": "CCEP",
+        "CRWD - CrowdStrike Holdings Inc.": "CRWD",
+        "SMCI - Super Micro Computer Inc.": "SMCI",
+        "ARM - Arm Holdings plc": "ARM"
     }
+    
+    # If search query provided, filter results
+    if search_query:
+        search_query = search_query.lower().strip()
+        filtered_tickers = {}
+        
+        for display, symbol in comprehensive_tickers.items():
+            # Search in both display name and symbol
+            if (search_query in display.lower() or 
+                search_query in symbol.lower()):
+                filtered_tickers[display] = symbol
+        
+        # Sort by relevance - exact symbol matches first
+        sorted_items = sorted(filtered_tickers.items(), 
+                            key=lambda x: (
+                                x[1].lower() == search_query,  # Exact symbol match
+                                x[1].lower().startswith(search_query),  # Symbol starts with
+                                search_query in x[0].lower()  # Name contains
+                            ), reverse=True)
+        
+        return dict(sorted_items) if sorted_items else comprehensive_tickers
+    
+    return comprehensive_tickers
+
