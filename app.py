@@ -8,7 +8,7 @@ import ta
 
 # Import your custom modules
 from main_forecasting_system import ComprehensiveStockForecaster
-from ticker_utils import get_sp500_tickers # Import the new utility
+from ticker_utils import get_all_tickers # Import the new utility
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -113,3 +113,4 @@ if ticker_symbol:
         price_data = forecaster.raw_data['price_data']
         fig = create_trading_view_chart(price_data, ticker_symbol)
         st.plotly_chart(fig, use_container_width=True)
+
