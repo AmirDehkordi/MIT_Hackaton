@@ -14,3 +14,4 @@ vaderSentiment
 matplotlib
 seaborn
 plotly
+lxml
