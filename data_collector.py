@@ -67,47 +67,66 @@ class DataCollector:
             return pd.DataFrame()
 
 
-    def get_fundamental_data(self, ticker: str) -> Dict[str, pd.DataFrame]:
-        """
-        Get fundamental data from Alpha Vantage
-        """
-        fundamental_data = {}
+    def generate_multi_horizon_forecast(self) -> Dict:
+    """
+    Generate forecasts for multiple time horizons
+    """
+    horizons = {
+        'short_term': 5,    # 1 week
+        'mid_term': 22,     # 1 month  
+        'long_term': 66     # 3 months
+    }
+    
+    multi_forecasts = {}
+    
+    for horizon_name, days in horizons.items():
+        forecast = self.generate_comprehensive_forecast(forecast_days=days)
+        multi_forecasts[horizon_name] = forecast
         
-        try:
-            # Income Statement
-            income_statement, _ = self.fd.get_income_statement_annual(symbol=ticker)
-            fundamental_data['income_statement'] = income_statement
-            time.sleep(12)  # Alpha Vantage rate limit
+    return multi_forecasts
+
+    def get_multi_horizon_recommendations(self) -> Dict:
+        """
+        Get investment recommendations for different time horizons
+        """
+        if not hasattr(self, 'multi_forecasts'):
+            self.multi_forecasts = self.generate_multi_horizon_forecast()
+        
+        recommendations = {}
+        current_price = self.raw_data['price_data']['Close'].iloc[-1]
+        
+        for horizon, forecast_data in self.multi_forecasts.items():
+            forecast_df = forecast_data['forecast_df']
             
-            # Balance Sheet
-            balance_sheet, _ = self.fd.get_balance_sheet_annual(symbol=ticker)
-            fundamental_data['balance_sheet'] = balance_sheet
-            time.sleep(12)
+            # Calculate metrics for each horizon
+            target_price = forecast_df['Predicted_Price'].iloc[-1]
+            expected_return = (target_price - current_price) / current_price
+            volatility = forecast_df['Predicted_Return'].std()
+            confidence = forecast_df['Confidence_Score'].mean()
             
-            # Cash Flow
-            cash_flow, _ = self.fd.get_cash_flow_annual(symbol=ticker)
-            fundamental_data['cash_flow'] = cash_flow
-            time.sleep(12)
-            
-            # Company Overview
-            overview, _ = self.fd.get_company_overview(symbol=ticker)
-            
-            # --- FIX IS HERE ---
-            # Convert the overview dictionary to a DataFrame to ensure consistency
-            if overview:
-                fundamental_data['overview'] = pd.DataFrame([overview])
+            # Determine signal
+            if expected_return > 0.1:
+                signal = "STRONG BUY"
+            elif expected_return > 0.05:
+                signal = "BUY"
+            elif expected_return < -0.1:
+                signal = "STRONG SELL"
+            elif expected_return < -0.05:
+                signal = "SELL"
             else:
-                fundamental_data['overview'] = pd.DataFrame()
-                
-        except Exception as e:
-            print(f"Error fetching fundamental data for {ticker}: {e}")
-            # Ensure all keys exist even on failure to prevent downstream errors
-            fundamental_data.setdefault('income_statement', pd.DataFrame())
-            fundamental_data.setdefault('balance_sheet', pd.DataFrame())
-            fundamental_data.setdefault('cash_flow', pd.DataFrame())
-            fundamental_data.setdefault('overview', pd.DataFrame())
+                signal = "HOLD"
             
-        return fundamental_data
+            recommendations[horizon] = {
+                'days': len(forecast_df),
+                'target_price': target_price,
+                'expected_return': expected_return,
+                'volatility': volatility,
+                'confidence': confidence,
+                'signal': signal,
+                'forecast_df': forecast_df
+            }
+        
+        return recommendations
     
     def get_economic_indicators(self) -> Dict[str, pd.DataFrame]:
         """
