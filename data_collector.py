@@ -71,19 +71,19 @@ class DataCollector:
     """
     Generate forecasts for multiple time horizons
     """
-    horizons = {
-        'short_term': 5,    # 1 week
-        'mid_term': 22,     # 1 month  
-        'long_term': 66     # 3 months
-    }
-    
-    multi_forecasts = {}
-    
-    for horizon_name, days in horizons.items():
-        forecast = self.generate_comprehensive_forecast(forecast_days=days)
-        multi_forecasts[horizon_name] = forecast
+        horizons = {
+            'short_term': 5,    # 1 week
+            'mid_term': 22,     # 1 month  
+            'long_term': 66     # 3 months
+        }
         
-    return multi_forecasts
+        multi_forecasts = {}
+        
+        for horizon_name, days in horizons.items():
+            forecast = self.generate_comprehensive_forecast(forecast_days=days)
+            multi_forecasts[horizon_name] = forecast
+            
+        return multi_forecasts
 
     def get_multi_horizon_recommendations(self) -> Dict:
         """
