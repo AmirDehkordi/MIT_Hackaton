@@ -354,6 +354,5 @@ For questions, suggestions, or issues:
 
 ---
 
-**Built with ❤️ for the AkashX.ai FinDocGPT Challenge**
 
 *"Transforming financial data into actionable investment intelligence through AI"* 
